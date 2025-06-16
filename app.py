@@ -1,56 +1,65 @@
 import streamlit as st
 import pandas as pd
-import random
 
-st.title("ショーケース順計算アプリ")
-st.write("Excelファイルをアップロードして、早替えが最小になるショーケース順を求めます。")
+st.title("コマ組み文字起こしアプリ")
+st.write("Excelファイルをアップロードして、コマ組みを文字起こしします。")
 
 uploaded_file = st.file_uploader("Excelファイルをアップロード", type=["xlsx"])
 
 if uploaded_file:
-    df = pd.read_excel(uploaded_file)
+    # シート名一覧の取得
+    excel_file = pd.ExcelFile(uploaded_file)
+    sheet_name = st.selectbox("シートを選択してください", excel_file.sheet_names)
 
-    all_data = []
-    for col in df.columns[1:]:  # 1列目は無視
-        members = df[col].dropna().tolist()
-        if members:
-            all_data.append((col, members))
+    if sheet_name:
+        # データの読み込み
+        data = pd.read_excel(excel_file, sheet_name=sheet_name, header=None, skiprows=1)
 
-    if not all_data:
-        st.error("ショーケースが見つかりません。2列目以降にショーケースを配置してください。")
-    else:
-        data_num = len(all_data)
-        decision = data_num
-        decision2 = data_num-1
-        decision_data = []
+        formatted_text = []
 
-        for k in range(10**16):
-            random.shuffle(all_data)
-            con = [0 for _ in range(data_num)]
-            con2= [0 for _ in range(data_num)]
-            for i in range(data_num - 2):
-                set1 = set(all_data[i][1])
-                set2 = set(all_data[i + 1][1])
-                set3 = set(all_data[i + 2][1])
-                if set1 & set2:
-                    con[i + 1] += 1
-                if set2 & set3:
-                    con[i + 1] += 1
-                if set1 & set3:
-                    con2[i+1] += 1
-
-            tmp = sum(con)
-            tmp2= sum(con)
-            if tmp < decision or (tmp<=decision and tmp2 <= decision2): 
-                decision = tmp
-                decision2 = tmp2
-                decision_data = list(all_data)
-                if decision == 0 and decision2 == 0:
+        def delete_number(a):
+            while a != "":
+                if a[-1].isdecimal() or a[-1] == ".":
+                    a = a[:-1]
+                else:
                     break
+            return a
 
-        st.success(f"早替え数: {decision}")
-        st.success(f"1コマ空き数: {decision2}")
+        pre_location = ""
+        for index, row in data.iterrows():
+            flag = 0
+            time_info = row[0]
+            location = row[1] if pd.notna(row[1]) else ''
+            activity1 = row[2] if pd.notna(row[2]) else ''
+            activity2 = row[3] if pd.notna(row[3]) else ''
+            activity1 = delete_number(activity1)
+            activity2 = delete_number(activity2)
 
-        st.subheader("最適コマ順:")
-        for i, (showcase_name, members) in enumerate(decision_data):
-            st.markdown(f"**{i+1}. {showcase_name}**: {', '.join(map(str, members))}")
+            if pd.notna(time_info):
+                time_info = str(time_info)
+                if time_info[-1] == ")":
+                    formatted_text.append("")
+                    formatted_text.append(time_info)
+                    flag = 1
+                    continue
+
+            if (str(location) != "" and (location != pre_location)) or flag == 1:
+                formatted_text.append(f"@{location}")
+                flag = 0
+
+            if pd.notna(time_info) and (activity1 or activity2):
+                if activity1 and activity2:
+                    formatted_text.append(f"{time_info} {activity1}/{activity2}")
+                elif activity1:
+                    formatted_text.append(f"{time_info} {activity1}")
+                elif activity2:
+                    formatted_text.append(f"{time_info} {activity2}")
+            elif pd.notna(time_info):
+                formatted_text.append(f"{time_info}")
+
+            pre_location = location
+
+        formatted_output = "\n".join([line for line in formatted_text if "施設なし" not in line])
+
+        st.subheader("フォーマット結果")
+        st.text(formatted_output)
