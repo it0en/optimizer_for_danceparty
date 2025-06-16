@@ -24,14 +24,14 @@ if uploaded_file:
         decision2 = data_num-1
         decision_data = []
 
-        for k in range(1000):
+        for k in range(2**16):
             random.shuffle(all_data)
             con = [0 for _ in range(data_num)]
             con2= [0 for _ in range(data_num)]
             for i in range(data_num - 2):
                 set1 = set(all_data[i][1])
                 set2 = set(all_data[i + 1][1])
-                set3 = set(all_data[i + 2][i])
+                set3 = set(all_data[i + 2][1])
                 if set1 & set2:
                     con[i + 1] += 1
                 if set2 & set3:
