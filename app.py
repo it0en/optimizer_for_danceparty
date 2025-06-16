@@ -29,7 +29,7 @@ if uploaded_file:
             decision2 = data_num - 1
             decision_data = []
 
-            for k in range(10**10):
+            for k in range(10**6):
                 random.shuffle(all_data)
                 con = [0 for _ in range(data_num)]
                 con2 = [0 for _ in range(data_num)]
